@@ -20,22 +20,20 @@ const {Navigator: RootNavigator, Screen: RootScreen} = createStackNavigator();
 
 const {Navigator: MainNavigator, Screen: MainScreen} = createStackNavigator();
 
-const HomeScreen = ({navigation}) => {
+const HomeScreen = ({navigation, authUser}) => {
   return (
     <View>
-      <Text>
-        Welcome, You're logged in!
-        <Button
-          onPress={() => navigation.navigate('testScreen')}
-          title="open screen">
-          Test screen
-        </Button>
-        <Button
-          onPress={() => navigation.navigate('roomModal')}
-          title="open modal">
-          Open room
-        </Button>
-      </Text>
+      <Text>Hello, {authUser ? `@${authUser.user.username}` : ''} </Text>
+      <Button
+        onPress={() => navigation.navigate('testScreen')}
+        title="open screen">
+        Test screen
+      </Button>
+      <Button
+        onPress={() => navigation.navigate('roomModal')}
+        title="open modal">
+        Open room
+      </Button>
     </View>
   );
 };
@@ -87,31 +85,108 @@ const SignInScreen = ({navigation, updateAuth}) => {
         value={password}
       />
       <Button title="Login" onPress={attemptLogin} />
+      <Text>or</Text>
+      <Button
+        title="Create a new Space account"
+        onPress={() => navigation.navigate('registerScreen')}
+      />
     </View>
   );
 };
 
-const MainStack = ({isAuth, updateAuth, logout}) => {
+const RegisterScreen = ({updateAuth}) => {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
+  function handleRegister() {
+    const httpAgent = new HttpAgent('http://b5e48a7b198c.ngrok.io/api');
+    httpAgent
+      ._post('/users', {
+        email,
+        password,
+        username,
+        firstName,
+        lastName,
+      })
+      .then((res) => {
+        if (res.success) {
+          updateAuth(true);
+        }
+      })
+      .catch((error) => {
+        console.log('there was an error while logging in', {error});
+      });
+  }
+  return (
+    <View>
+      <Text>Sign In</Text>
+      <TextInput
+        placeholder="first name"
+        onChangeText={(text) => setFirstName(text)}
+        value={firstName}
+      />
+      <TextInput
+        placeholder="last name"
+        onChangeText={(text) => setLastName(text)}
+        value={lastName}
+      />
+      <TextInput
+        placeholder="email"
+        onChangeText={(text) => setEmail(text)}
+        value={email}
+      />
+      <TextInput
+        placeholder="unique username"
+        onChangeText={(text) => setUsername(text)}
+        value={username}
+      />
+      <TextInput
+        placeholder="password"
+        secureTextEntry
+        onChangeText={(text) => setPassword(text)}
+        value={password}
+      />
+      <Button title="Register" onPress={handleRegister} />
+    </View>
+  );
+};
+
+const MainStack = ({isAuth, updateAuth, logout, authUser}) => {
   console.log('the isAuth state is', isAuth);
   return (
-    <MainNavigator initialRouteName="HomeScreen" mode="card">
+    <MainNavigator
+      initialRouteName="HomeScreen"
+      mode="card"
+      screenOptions={() => {
+        if (!isAuth) {
+          return;
+        }
+        return {
+          headerRight() {
+            return <Button title="Log out" onPress={logout} />;
+          },
+        };
+      }}>
       {isAuth ? (
         <>
-          <MainScreen
-            name="homeScreen"
-            options={{
-              headerRight() {
-                return <Button title="Log out" onPress={logout} />;
-              },
-            }}>
-            {(props) => <HomeScreen {...props} logout={logout} />}
+          <MainScreen name="homeScreen">
+            {(props) => (
+              <HomeScreen {...props} logout={logout} authUser={authUser} />
+            )}
           </MainScreen>
           <MainScreen name="testScreen" component={TestScreen} />
         </>
       ) : (
-        <MainScreen name="signInScreen">
-          {(props) => <SignInScreen {...props} updateAuth={updateAuth} />}
-        </MainScreen>
+        <>
+          <MainScreen name="signInScreen">
+            {(props) => <SignInScreen {...props} updateAuth={updateAuth} />}
+          </MainScreen>
+          <MainScreen name="registerScreen">
+            {(props) => <RegisterScreen {...props} updateAuth={updateAuth} />}
+          </MainScreen>
+        </>
       )}
     </MainNavigator>
   );
@@ -192,7 +267,7 @@ const App = () => {
       httpAgent
         ._get('/users')
         .then((user) => {
-          console.log('response');
+          console.log('response', user);
           setAuthUser(user);
         })
         .catch((error) => {
@@ -233,6 +308,7 @@ const App = () => {
               isAuth={isAuth}
               updateAuth={updateAuth}
               logout={logout}
+              authUser={authUser}
             />
           )}
         </RootScreen>
