@@ -8,6 +8,8 @@ target 'spacegramapp' do
 
   use_react_native!(:path => config["reactNativePath"])
 
+  pod 'RNCAsyncStorage', :path => '../node_modules/@react-native-async-storage/async-storage'
+
   target 'spacegramappTests' do
     inherit! :complete
     # Pods for testing
