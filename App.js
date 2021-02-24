@@ -91,12 +91,21 @@ const SignInScreen = ({navigation, updateAuth}) => {
   );
 };
 
-const MainStack = ({isAuth, updateAuth}) => {
+const MainStack = ({isAuth, updateAuth, logout}) => {
+  console.log('the isAuth state is', isAuth);
   return (
     <MainNavigator initialRouteName="HomeScreen" mode="card">
       {isAuth ? (
         <>
-          <MainScreen name="homeScreen" component={HomeScreen} />
+          <MainScreen
+            name="homeScreen"
+            options={{
+              headerRight() {
+                return <Button title="Log out" onPress={logout} />;
+              },
+            }}>
+            {(props) => <HomeScreen {...props} logout={logout} />}
+          </MainScreen>
           <MainScreen name="testScreen" component={TestScreen} />
         </>
       ) : (
@@ -142,23 +151,37 @@ const App = () => {
   const [authUser, setAuthUser] = useState(null);
   const [isAuth, setIsAuth] = useState(null);
 
-  function updateAuth(isAuth) {
-    AsyncStorage.setItem('@isAuth', `${isAuth}`).then(() => {
-      setIsAuth(isAuth);
+  function updateAuth(_isAuth) {
+    return AsyncStorage.setItem('@isAuth', `${_isAuth}`).then(() => {
+      setIsAuth(_isAuth);
     });
+  }
+
+  function logout() {
+    // make request to invalidate JWT
+    // lacking valid authentication credentials for the target resource
+    HttpAgent.setToken('@secureJwt', '')
+      .then(() => {
+        updateAuth(false);
+        setAuthUser(null);
+      })
+      .catch(() => {
+        console.log('error while resetting JWT');
+      });
   }
 
   useEffect(() => {
     AsyncStorage.getItem('@isAuth')
       .then((persistedIsAuth) => {
-        console.log('the persisted auth is', {persistedIsAuth});
-        updateAuth(JSON.parse(persistedIsAuth));
+        // console.log('the persisted auth is', {persistedIsAuth});
+        updateAuth(JSON.parse(persistedIsAuth)).finally(() => {
+          setLoading(false);
+        });
       })
       .catch((error) => {
-        updateAuth(false);
-      })
-      .finally(() => {
-        setLoading(false);
+        updateAuth(false).finally(() => {
+          setLoading(false);
+        });
       });
   }, []);
 
@@ -178,14 +201,7 @@ const App = () => {
             // that falls out of the range of 2xx
             if (error.response.status === 401) {
               // lacking valid authentication credentials for the target resource
-              HttpAgent.setToken('@secureJwt', '')
-                .then(() => {
-                  updateAuth(false);
-                  setAuthUser(null);
-                })
-                .catch(() => {
-                  console.log('error while resetting JWT');
-                });
+              logout();
             }
             // console.log(error.response.data);
             // console.log(error.response.status);
@@ -212,7 +228,12 @@ const App = () => {
       <RootNavigator mode="modal">
         <RootScreen name="mainStack" options={{headerShown: false}}>
           {(props) => (
-            <MainStack {...props} isAuth={isAuth} updateAuth={updateAuth} />
+            <MainStack
+              {...props}
+              isAuth={isAuth}
+              updateAuth={updateAuth}
+              logout={logout}
+            />
           )}
         </RootScreen>
         <RootScreen name="roomModal" component={CurrentRoomScreen} />
