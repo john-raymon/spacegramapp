@@ -3,6 +3,13 @@ import {NavigationContainer} from '@react-navigation/native';
 import {createStackNavigator} from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import HttpAgent from './httpAgent';
+import {
+  NativeFunction,
+  getSDKEventEmitter,
+  MobileSDKEvent,
+  MeetingError,
+} from './utils/Bridge';
+
 // import CurrentRoomScreen from './screens/CurrentRoomScreen';
 
 import {
@@ -15,6 +22,7 @@ import {
   Button,
   StatusBar,
   PermissionsAndroid,
+  Alert,
 } from 'react-native';
 
 const {Navigator: RootNavigator, Screen: RootScreen} = createStackNavigator();
@@ -22,9 +30,54 @@ const {Navigator: RootNavigator, Screen: RootScreen} = createStackNavigator();
 const {Navigator: MainNavigator, Screen: MainScreen} = createStackNavigator();
 
 const HomeScreen = ({navigation, authUser}) => {
+  const [isInRoom, setIsInRoom] = useState(false);
+  useEffect(() => {
+    this.onMeetingStartSubscription = getSDKEventEmitter().addListener(
+      MobileSDKEvent.OnMeetingStart,
+      () => {
+        setIsInRoom(true);
+      },
+    );
+
+    this.onMeetingEndSubscription = getSDKEventEmitter().addListener(
+      MobileSDKEvent.OnMeetingEnd,
+      () => {
+        setIsInRoom(false);
+      },
+    );
+    this.onErrorSubscription = getSDKEventEmitter().addListener(
+      MobileSDKEvent.OnError,
+      (message) => {
+        Alert.alert('SDK Error', message);
+      },
+    );
+  }, []);
+  function createAndJoinMeeting() {
+    const httpAgent = new HttpAgent('http://22428beafa99.ngrok.io/api');
+    httpAgent
+      ._post('/spaces', {
+        title: 'testing space',
+      })
+      .then((res) => {
+        console.log('meeting data', res);
+        return NativeFunction.startMeeting(
+          res.joinInfo.meeting,
+          res.joinInfo.attendee,
+        );
+      })
+      .catch((error) => {
+        console.log(
+          'there was an error while creating and joining the room in',
+          {error},
+        );
+      });
+  }
   return (
     <View>
       <Text>Hello, {authUser ? `@${authUser.user.username}` : ''} </Text>
+      {!isInRoom ? (
+        <Button onPress={createAndJoinMeeting} title="Start a room" />
+      ) : null}
       <Button
         onPress={() => navigation.navigate('testScreen')}
         title="open screen">
