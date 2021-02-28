@@ -14,6 +14,7 @@ import {
   TextInput,
   Button,
   StatusBar,
+  PermissionsAndroid,
 } from 'react-native';
 
 const {Navigator: RootNavigator, Screen: RootScreen} = createStackNavigator();
@@ -55,7 +56,7 @@ const SignInScreen = ({navigation, updateAuth}) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   function attemptLogin() {
-    const httpAgent = new HttpAgent('http://b5e48a7b198c.ngrok.io/api');
+    const httpAgent = new HttpAgent('http://22428beafa99.ngrok.io/api');
     httpAgent
       ._post('/users/login', {
         email,
@@ -101,7 +102,7 @@ const RegisterScreen = ({updateAuth}) => {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   function handleRegister() {
-    const httpAgent = new HttpAgent('http://b5e48a7b198c.ngrok.io/api');
+    const httpAgent = new HttpAgent('http://22428beafa99.ngrok.io/api');
     httpAgent
       ._post('/users', {
         email,
@@ -246,6 +247,9 @@ const App = () => {
   }
 
   useEffect(() => {
+    const grants = PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+    );
     AsyncStorage.getItem('@isAuth')
       .then((persistedIsAuth) => {
         // console.log('the persisted auth is', {persistedIsAuth});
@@ -262,7 +266,7 @@ const App = () => {
 
   // on isAuth changes, we check if a user is authenticated then attempt to fetch the user's data
   useEffect(() => {
-    const httpAgent = new HttpAgent('http://b5e48a7b198c.ngrok.io/api');
+    const httpAgent = new HttpAgent('http://22428beafa99.ngrok.io/api');
     if (isAuth) {
       httpAgent
         ._get('/users')
